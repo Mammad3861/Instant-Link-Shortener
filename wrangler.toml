@@ -1,0 +1,7 @@
+name = "instant-link-shortener"
+compatibility_date = "2024-01-01"
+
+# Bind the ILS KV Namespace for local dev or direct upload
+[[kv_namespaces]]
+binding = "ILS"
+id = "YOUR_KV_NAMESPACE_ID"
