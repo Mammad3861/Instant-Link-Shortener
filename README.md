@@ -15,7 +15,7 @@ A lightning-fast, serverless URL shortener built on Cloudflare Pages and KV. Fea
 You can deploy this project directly from your browser in less than 2 minutes without using Git!
 
 ### Step 1: Download the Correct Release File
-1. Go to the [Releases page]([../../releases/latest](https://github.com/Mammad3861/Instant-Link-Shortener/releases/latest)) of this repository.
+1. Go to the [Releases page](https://github.com/Mammad3861/Instant-Link-Shortener/releases/latest) of this repository.
 2. Under the **Assets** section of the latest release, download the **`ILS-Deploy-vX.X.X.zip`** file. 
 *(⚠️ Note: Do **not** download the "Source code (zip)", as GitHub adds an extra folder wrapper that breaks the Cloudflare deployment).*
 
