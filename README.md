@@ -56,5 +56,13 @@ To add enterprise-grade security to your admin panel without modifying the code,
 - **Public Interface:** Navigate to your Pages domain (e.g., `https://your-app.pages.dev`).
 - **Super Admin Dashboard:** Navigate to `https://your-app.pages.dev/admin.html` and log in with your `MASTER_KEY`.
 
+## 🌍 Custom Domain Support
+Want to use your own domain (e.g., `link.yourdomain.com`)? Cloudflare Pages makes it free and easy!
+1. Go to your Cloudflare Pages project.
+2. Click on the **Custom Domains** tab.
+3. Click **Set up a custom domain** and enter your desired domain.
+4. Cloudflare will automatically configure the DNS and SSL.
+5. The ILS script will dynamically detect your new domain and generate all future short links using it!
+
 ## 🛡️ License
 MIT License. Free to use, modify, and distribute.
