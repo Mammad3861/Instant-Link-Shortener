@@ -37,11 +37,18 @@ export async function onRequestPost({ request, env }) {
   }
 
   try {
-    const { url, customSlug, ttl } = await request.json();
+    // Get variables from request
+    let { url, customSlug, ttl } = await request.json();
     if (!url) return new Response('Missing URL', { status: 400 });
 
-    try { new URL(url); } catch { return new Response('Invalid URL', { status: 400 }); }
+    // Auto-prepend https:// if the user forgot it
+    if (!/^https?:\/\//i.test(url)) {
+      url = 'https://' + url;
+    }
 
+    // Validate the corrected URL
+    try { new URL(url); } catch { return new Response('Invalid URL', { status: 400 }); }
+    
     const lowerUrl = url.toLowerCase();
     const isUnsafe = blocklist.some(keyword => lowerUrl.includes(keyword));
     
@@ -58,7 +65,11 @@ export async function onRequestPost({ request, env }) {
 
     if (isAdmin) {
       finalSlug = customSlug ? customSlug.trim() : generateSlug();
-      if (ttl && Number(ttl) >= 60) expirationTtl = Number(ttl);
+      // Convert hours to seconds (e.g., 2 hours = 7200 seconds)
+      if (ttl && Number(ttl) > 0) {
+        expirationTtl = Math.floor(Number(ttl) * 3600);
+        if (expirationTtl < 60) expirationTtl = 60; // Cloudflare minimum is 60s
+      }
     } else {
       finalSlug = generateSlug();
       expirationTtl = 600; // 10-minute default for public
