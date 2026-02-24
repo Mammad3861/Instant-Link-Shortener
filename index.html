@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Instant Link Shortener</title>
+  
+  <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v3.3.0/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
+
+  <style>
+    :root {
+      --bg-base: #f2f2f7;
+      --bg-mesh-1: rgba(100, 200, 255, 0.5);
+      --bg-mesh-2: rgba(255, 150, 200, 0.5);
+      --glass-bg: rgba(255, 255, 255, 0.35);
+      --glass-border: rgba(255, 255, 255, 0.6);
+      --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+      --text-main: #000000;
+      --text-muted: #8e8e93;
+      --input-bg: rgba(255, 255, 255, 0.4);
+      --input-focus: rgba(255, 255, 255, 0.8);
+      --primary: #007aff;
+      --primary-hover: #005bb5;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-base: #000000;
+        --bg-mesh-1: rgba(60, 20, 100, 0.6);
+        --bg-mesh-2: rgba(20, 60, 100, 0.6);
+        --glass-bg: rgba(30, 30, 30, 0.45);
+        --glass-border: rgba(255, 255, 255, 0.15);
+        --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        --text-main: #ffffff;
+        --text-muted: #ebebf599;
+        --input-bg: rgba(118, 118, 128, 0.24);
+        --input-focus: rgba(118, 118, 128, 0.4);
+        --primary: #0a84ff;
+        --primary-hover: #006ee6;
+      }
+    }
+
+    body {
+      margin: 0; min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-base);
+      background-image: radial-gradient(circle at 15% 20%, var(--bg-mesh-1), transparent 40%),
+                        radial-gradient(circle at 85% 80%, var(--bg-mesh-2), transparent 40%);
+      background-attachment: fixed; color: var(--text-main);
+      display: flex; justify-content: center; align-items: center;
+      padding: 1.5rem; box-sizing: border-box; transition: background 0.4s ease;
+    }
+
+    body:lang(fa) { font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, sans-serif; }
+
+    .glass-panel {
+      width: 100%; max-width: 420px; background: var(--glass-bg);
+      backdrop-filter: blur(40px) saturate(180%); -webkit-backdrop-filter: blur(40px) saturate(180%);
+      border: 1px solid var(--glass-border); border-radius: 28px;
+      padding: 2.5rem; box-shadow: var(--glass-shadow);
+    }
+
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+    h2 { margin: 0; font-weight: 600; font-size: 1.4rem; letter-spacing: -0.5px; }
+
+    form { display: flex; flex-direction: column; gap: 1rem; }
+
+    input {
+      width: 100%; padding: 0.9rem 1rem; background: var(--input-bg);
+      border: 1px solid transparent; color: var(--text-main); border-radius: 14px;
+      box-sizing: border-box; font-family: inherit; font-size: 1rem; transition: all 0.2s ease;
+    }
+
+    input:focus { outline: none; background: var(--input-focus); border-color: var(--primary); }
+    input::placeholder { color: var(--text-muted); font-weight: 400; }
+
+    button {
+      background: var(--primary); color: #fff; border: none; padding: 0.9rem 2rem;
+      border-radius: 14px; font-weight: 600; font-size: 1rem; cursor: pointer;
+      font-family: inherit; transition: all 0.2s ease; align-self: center;
+    }
+
+    button:hover { background: var(--primary-hover); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-icon {
+      background: var(--input-bg); color: var(--text-main); padding: 0.5rem 0.8rem;
+      border-radius: 10px; font-size: 0.9rem; font-weight: 500;
+    }
+    .btn-icon:hover { background: var(--input-focus); }
+    .hidden { display: none !important; }
+
+    #adminPanel { display: flex; flex-direction: column; gap: 1rem; margin-top: 0.5rem; }
+
+    #messageBox {
+      margin-top: 1.5rem; padding: 1rem; border-radius: 14px; font-weight: 500;
+      font-size: 0.9rem; word-break: break-all; text-align: center; background: var(--input-bg);
+    }
+
+    .auth-section {
+      margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(128, 128, 128, 0.2);
+      display: flex; align-items: center; gap: 0.8rem;
+    }
+    .auth-section input { margin-bottom: 0; padding: 0.8rem; font-size: 0.9rem; flex: 1; }
+    .auth-section button { padding: 0.8rem 1.5rem; width: auto; white-space: nowrap; align-self: center; }
+
+    @media (max-width: 480px) {
+      .glass-panel { padding: 1.5rem; border-radius: 24px; }
+      button { width: 100%; }
+      .auth-section { flex-direction: column; align-items: stretch; }
+      .auth-section button { width: 100%; margin-top: 0.5rem;}
+    }
+  </style>
+</head>
+<body>
+
+  <div class="glass-panel">
+    <div class="header">
+      <h2 id="appTitle">Link Shortener</h2>
+      <button id="langToggle" class="btn-icon">FA</button>
+    </div>
+
+    <form id="shortenForm">
+      <input type="text" id="longUrl" placeholder="Paste long URL here..." required>
+      
+      <div id="adminPanel" class="hidden">
+        <input type="text" id="customSlug" placeholder="Custom Slug (Optional)">
+        <input type="number" id="ttlInput" placeholder="Expiration in hours (Optional)" step="0.1" min="0.1">
+      </div>
+
+      <button type="submit" id="submitBtn">Shorten</button>
+    </form>
+
+    <div id="messageBox" class="hidden"></div>
+
+    <div class="auth-section">
+      <input type="password" id="authToken" placeholder="Admin Token">
+      <button id="saveTokenBtn" class="btn-icon">Save</button>
+    </div>
+  </div>
+
+  <script>
+    // i18n Config
+    const dict = {
+      en: {
+        title: 'Link Shortener',
+        urlPlaceholder: 'Paste long URL here...',
+        slugPlaceholder: 'Custom Slug (Optional)',
+        ttlPlaceholder: 'Expiration in hours (Optional)',
+        btnShorten: 'Shorten',
+        tokenPlaceholder: 'Admin Token',
+        btnSaveToken: 'Save',
+        btnUpdateToken: 'Update',
+        errGeneric: 'An error occurred.',
+        err400: 'Invalid URL.',
+        err403: 'Access Denied: Unsafe link or blocked IP.',
+        err409: 'Slug already in use.',
+        err429: 'Too many requests.',
+        successToken: 'Token saved.',
+        successLink: 'Link created: '
+      },
+      fa: {
+        title: 'کوتاه‌کننده لینک',
+        urlPlaceholder: 'لینک خود را اینجا قرار دهید...',
+        slugPlaceholder: 'کلمه اختصاصی (اختیاری)',
+        ttlPlaceholder: 'انقضا به ساعت (اختیاری)',
+        btnShorten: 'کوتاه کن',
+        tokenPlaceholder: 'توکن ادمین',
+        btnSaveToken: 'ذخیره',
+        btnUpdateToken: 'بروزرسانی',
+        errGeneric: 'خطایی رخ داد.',
+        err400: 'فرمت لینک نامعتبر است.',
+        err403: 'دسترسی مسدود شد.',
+        err409: 'این کلمه اختصاصی قبلاً ثبت شده است.',
+        err429: 'درخواست بیش از حد.',
+        successToken: 'توکن ذخیره شد.',
+        successLink: 'لینک ساخته شد: '
+      }
+    };
+
+    const el = {
+      html: document.documentElement,
+      appTitle: document.getElementById('appTitle'),
+      longUrl: document.getElementById('longUrl'),
+      customSlug: document.getElementById('customSlug'),
+      ttlInput: document.getElementById('ttlInput'),
+      submitBtn: document.getElementById('submitBtn'),
+      tokenInput: document.getElementById('authToken'),
+      saveTokenBtn: document.getElementById('saveTokenBtn'),
+      adminPanel: document.getElementById('adminPanel'),
+      messageBox: document.getElementById('messageBox'),
+      langToggle: document.getElementById('langToggle')
+    };
+
+    let currentLang = navigator.language.startsWith('fa') ? 'fa' : 'en';
+    let storedToken = localStorage.getItem('cf_shortener_token') || '';
+
+    const applyLang = (lang) => {
+      currentLang = lang;
+      el.html.dir = lang === 'fa' ? 'rtl' : 'ltr';
+      el.html.lang = lang;
+      
+      el.appTitle.textContent = dict[lang].title;
+      el.longUrl.placeholder = dict[lang].urlPlaceholder;
+      el.customSlug.placeholder = dict[lang].slugPlaceholder;
+      el.ttlInput.placeholder = dict[lang].ttlPlaceholder;
+      el.submitBtn.textContent = dict[lang].btnShorten;
+      el.tokenInput.placeholder = dict[lang].tokenPlaceholder;
+      el.saveTokenBtn.textContent = storedToken ? dict[lang].btnUpdateToken : dict[lang].btnSaveToken;
+      el.langToggle.textContent = lang === 'fa' ? 'EN' : 'FA';
+    };
+
+    const showMsg = (msg, isError = false) => {
+      el.messageBox.textContent = msg;
+      el.messageBox.style.color = isError ? 'var(--primary)' : 'inherit';
+      el.messageBox.classList.remove('hidden');
+    };
+
+    const toggleAdmin = () => {
+      if (storedToken) {
+        el.adminPanel.classList.remove('hidden');
+        el.tokenInput.value = storedToken;
+      } else {
+        el.adminPanel.classList.add('hidden');
+      }
+    };
+
+    el.langToggle.addEventListener('click', () => applyLang(currentLang === 'fa' ? 'en' : 'fa'));
+
+    el.saveTokenBtn.addEventListener('click', () => {
+      const token = el.tokenInput.value.trim();
+      if (token) {
+        localStorage.setItem('cf_shortener_token', token);
+        storedToken = token;
+        toggleAdmin();
+        applyLang(currentLang); 
+        showMsg(dict[currentLang].successToken);
+      } else {
+        localStorage.removeItem('cf_shortener_token');
+        storedToken = '';
+        toggleAdmin();
+        el.messageBox.classList.add('hidden');
+      }
+    });
+
+    document.getElementById('shortenForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      el.submitBtn.disabled = true;
+      el.messageBox.classList.add('hidden');
+
+      const payload = { url: el.longUrl.value.trim() };
+      
+      if (storedToken) {
+        if (el.customSlug.value) payload.customSlug = el.customSlug.value;
+        if (el.ttlInput.value) payload.ttl = parseFloat(el.ttlInput.value);
+      }
+
+      try {
+        const res = await fetch('/api/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(storedToken && { 'Authorization': `Bearer ${storedToken}` })
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const errCode = `err${res.status}`;
+          throw new Error(dict[currentLang][errCode] || dict[currentLang].errGeneric);
+        }
+
+        const data = await res.json();
+        const shortLink = `${window.location.origin}/${data.slug}`;
+        
+        showMsg(`${dict[currentLang].successLink} ${shortLink}`);
+        el.longUrl.value = '';
+        el.customSlug.value = '';
+        el.ttlInput.value = '';
+        
+      } catch (err) {
+        showMsg(err.message, true);
+      } finally {
+        el.submitBtn.disabled = false;
+      }
+    });
+
+    applyLang(currentLang);
+    toggleAdmin();
+  </script>
+</body>
+</html>
