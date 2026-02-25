@@ -10,14 +10,12 @@ A lightning-fast, serverless URL shortener built on Cloudflare Pages and KV. Fea
 - **Private Mode:** Easily disable public link creation so only authenticated team members can use the service.
 - **Custom Domain:** Automatically supports your own custom domains (e.g., `link.yourdomain.com`).
 
-## 🛠 Direct Deploy (Zip Upload Method)
+## 🛠 Direct Deploy (GitHub Integration)
 
-You can deploy this project directly from your browser in less than 2 minutes without using Git!
+This project is designed to be deployed directly and automatically via Cloudflare Pages using GitHub integration.
 
-### Step 1: Download the Correct Release File
-1. Go to the [Releases page](https://github.com/Mammad3861/Instant-Link-Shortener/releases/latest) of this repository.
-2. Under the **Assets** section of the latest release, download the **`ILS-Deploy-vX.X.X.zip`** file. 
-*(⚠️ Note: Do **not** download the "Source code (zip)", as GitHub adds an extra folder wrapper that breaks the Cloudflare deployment).*
+### Step 1: Fork this Repository
+1. Click the **Fork** button at the top right of this page to copy the project to your own GitHub account.
 
 ### Step 2: Create a Cloudflare KV Database
 1. Log in to your [Cloudflare Dashboard](https://dash.cloudflare.com/).
@@ -26,12 +24,13 @@ You can deploy this project directly from your browser in less than 2 minutes wi
 
 ### Step 3: Deploy to Cloudflare Pages
 1. Go to **Workers & Pages** -> **Overview** and click **Create application**.
-2. Select the **Pages** tab and choose **Upload assets** (Direct Upload).
-3. Name your project and upload the `ILS-Deploy.zip` file you downloaded.
-4. Click **Deploy**.
+2. Select the **Pages** tab and click **Connect to Git**.
+3. Select your forked repository and click **Begin setup**.
+4. In the setup page, leave **Framework preset** as `None`.
+5. Ensure the **Build command** and **Build output directory** are completely **empty**.
+6. Click **Save and Deploy**. (Wait for the initial build to finish, then click Continue to project).
 
-### Step 4: Configure Environment Variables
-Once deployed, connect the database and set your admin password:
+### Step 4: Configure Database and Security Key
 1. Go to your Pages project **Settings**.
 2. Navigate to **Functions** -> **KV namespace bindings**.
    - Variable name: `ILS`
@@ -39,20 +38,20 @@ Once deployed, connect the database and set your admin password:
 3. Navigate to **Environment variables** (under Settings). Add a new variable:
    - Variable name: `MASTER_KEY`
    - Value: *Enter a strong, secret password or UUID*. (Click Encrypt to hide it).
-4. **Important:** Go back to the **Deployments** tab and click **Retry deployment** to apply these variables.
+4. **Important:** Go back to the **Deployments** tab and click **Retry deployment** to apply these database variables.
 
 ## 🔒 Email Authentication via Cloudflare Zero Trust (Highly Recommended)
 
 To add enterprise-grade security to your admin panel without modifying the code:
 1. In your Cloudflare Dashboard, go to **Zero Trust** -> **Access** -> **Applications**.
 2. Click **Add an application** -> **Self-hosted**.
-3. Name it "Admin Panel" and set the subdomain to your Pages URL with the path `/admin.html`.
+3. Name it "Admin Panel" and set the subdomain to your Pages URL with the path `/dashboard.html`.
 4. Under **Policies**, create a rule (Action: **Allow**, Include: **Emails** -> *Your Email*).
 5. Save. Anyone accessing the admin panel will now need a One-Time PIN sent to your email!
 
 ## 💻 Usage
-- **Public Interface:** Navigate to your Pages domain.
-- **Super Admin Dashboard:** Navigate to `your-domain.pages.dev/admin.html` and log in with your `MASTER_KEY`.
+- **Public Interface:** Navigate to your Pages domain (e.g., `your-domain.pages.dev`).
+- **Super Admin Dashboard:** Navigate to `your-domain.pages.dev/dashboard.html` and log in with your `MASTER_KEY`.
 
 ## 🛡️ License
 MIT License. Free to use, modify, and distribute.
