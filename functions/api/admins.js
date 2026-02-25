@@ -1,58 +1,45 @@
-// Manage sub-admins. Strict MASTER_KEY authorization required.
-
-export async function onRequestGet({ request, env }) {
-  const authHeader = request.headers.get('Authorization');
-  if (authHeader !== `Bearer ${env.MASTER_KEY}`) {
-    return new Response('Unauthorized', { status: 401 });
-  }
-
+export async function onRequest(context) {
   try {
-    // Fetch all sub-admin tokens from KV
-    const list = await env.ILS.list({ prefix: 'admin_' });
-    const admins = list.keys.map(key => key.name.replace('admin_', ''));
+    const { request, env } = context;
+
+    // 1. Strict Authentication: Only MASTER_KEY can manage admins
+    const authHeader = request.headers.get('Authorization') || '';
+    const token = authHeader.replace('Bearer ', '').trim();
     
-    return new Response(JSON.stringify({ admins }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    if (token !== env.MASTER_KEY) {
+      return new Response('Forbidden: Master key privileges required', { status: 403 });
+    }
+
+    // 2. Handle GET request: List all sub-admins
+    if (request.method === 'GET') {
+      const data = await env.ILS.list({ prefix: 'admin_' });
+      const admins = data.keys.map(k => k.name.replace('admin_', ''));
+      return new Response(JSON.stringify({ admins }), { 
+        status: 200, 
+        headers: { 'Content-Type': 'application/json' } 
+      });
+    }
+
+    // 3. Handle POST request: Add a new sub-admin
+    if (request.method === 'POST') {
+      const { name, token: newToken } = await request.json();
+      if (!newToken) return new Response('Token is required', { status: 400 });
+      
+      await env.ILS.put(`admin_${newToken}`, name || 'SubAdmin');
+      return new Response(JSON.stringify({ success: true }), { status: 201 });
+    }
+
+    // 4. Handle DELETE request: Remove a sub-admin
+    if (request.method === 'DELETE') {
+      const { token: tokenToRemove } = await request.json();
+      await env.ILS.delete(`admin_${tokenToRemove}`);
+      return new Response(JSON.stringify({ success: true }), { status: 200 });
+    }
+
+    return new Response('Method Not Allowed', { status: 405 });
+
   } catch (err) {
-    console.error('Fetch Admins Error:', err);
-    return new Response('Server Error', { status: 500 });
-  }
-}
-
-export async function onRequestPost({ request, env }) {
-  const authHeader = request.headers.get('Authorization');
-  if (authHeader !== `Bearer ${env.MASTER_KEY}`) {
-    return new Response('Unauthorized', { status: 401 });
-  }
-
-  try {
-    const { token, name } = await request.json();
-    if (!token) return new Response('Missing token', { status: 400 });
-
-    // Store sub-admin token. The value is a label/name.
-    await env.ILS.put(`admin_${token}`, name || 'Sub-Admin');
-    
-    return new Response('Sub-admin created', { status: 201 });
-  } catch (err) {
-    return new Response('Server Error', { status: 500 });
-  }
-}
-
-export async function onRequestDelete({ request, env }) {
-  const authHeader = request.headers.get('Authorization');
-  if (authHeader !== `Bearer ${env.MASTER_KEY}`) {
-    return new Response('Unauthorized', { status: 401 });
-  }
-
-  try {
-    const { token } = await request.json();
-    if (!token) return new Response('Missing token', { status: 400 });
-
-    await env.ILS.delete(`admin_${token}`);
-    return new Response('Sub-admin removed', { status: 200 });
-  } catch (err) {
-    return new Response('Server Error', { status: 500 });
+    console.error('Admin Management Error:', err);
+    return new Response(`Server Error: ${err.message}`, { status: 500 });
   }
 }
