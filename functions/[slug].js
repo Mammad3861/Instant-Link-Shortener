@@ -1,24 +1,31 @@
-export async function onRequestGet(context) {
-  const { env, params } = context;
+export async function onRequestGet({ request, env, params }) {
+  // Extract the requested path/slug
   const slug = params.slug;
 
-  if (!slug) {
-    return new Response('Bad Request: Missing slug', { status: 400 });
+  // 1. Static Asset Bypass (Crucial for Dashboard and UI)
+  // If the request is for the dashboard, admin panel, or a file with an extension, ignore it as a shortlink
+  const bypassedPaths = ['dashboard', 'dashboard.html', 'admin', 'admin.html', 'favicon.ico'];
+  
+  if (!slug || slug.includes('.') || bypassedPaths.includes(slug.toLowerCase())) {
+    // Tell Cloudflare to stop processing this function and load the static HTML file instead
+    return env.ASSETS.fetch(request);
   }
 
+  // 2. Process Actual Link Redirection
   try {
-    // Fetch the destination URL from Cloudflare KV
     const targetUrl = await env.ILS.get(slug);
-
-    if (targetUrl) {
-      return Response.redirect(targetUrl, 302);
+    
+    // If the slug doesn't exist in the database
+    if (!targetUrl) {
+      return new Response('Short link not found or expired.', { status: 404 });
     }
 
-    // Slug not found in KV
-    return new Response('Not Found', { status: 404 });
-
+    // Successfully redirect the user
+    return Response.redirect(targetUrl, 302);
+    
   } catch (err) {
-    console.error('KV Read Error:', err);
+    // Catch and log execution errors silently
+    console.error('Redirection System Error:', err);
     return new Response('Internal Server Error', { status: 500 });
   }
 }
