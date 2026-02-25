@@ -1,38 +1,50 @@
 export async function onRequestGet({ request, env }) {
-  // Require admin authentication
-  const authHeader = request.headers.get('Authorization');
-  if (authHeader !== `Bearer ${env.API_KEY}`) {
-    return new Response('Unauthorized', { status: 401 });
-  }
-
   try {
-    // Fetch all keys with the 'ban_' prefix
-    const list = await env.ILS.list({ prefix: 'ban_' });
+    // 1. Authenticate the user role
+    const authHeader = request.headers.get('Authorization') || '';
+    const token = authHeader.replace('Bearer ', '').trim();
+    
+    let isAdmin = (token === env.MASTER_KEY);
+    if (!isAdmin && token) {
+      isAdmin = !!(await env.ILS.get(`admin_${token}`));
+    }
+    
+    if (!isAdmin) {
+      return new Response('Unauthorized Access', { status: 401 });
+    }
+
+    // 2. Fetch all banned IP logs from the KV database
+    const data = await env.ILS.list({ prefix: 'ban_' });
     const logs = [];
 
-    // Retrieve violation details for each blocked IP
-    for (const key of list.keys) {
-      const data = await env.ILS.get(key.name);
-      const ip = key.name.replace('ban_', '');
-      
-      if (data) {
-        try {
-          const parsedData = JSON.parse(data);
-          logs.push({ ip, ...parsedData });
-        } catch {
-          // Fallback if data is not JSON
-          logs.push({ ip, rawData: data });
-        }
+    // 3. Parse and format the log data
+    for (const key of data.keys) {
+      const logDataStr = await env.ILS.get(key.name);
+      try {
+        const logData = JSON.parse(logDataStr);
+        logs.push({
+          ip: key.name.replace('ban_', ''),
+          attemptedUrl: logData.attemptedUrl || 'Unknown',
+          timestamp: logData.timestamp || null
+        });
+      } catch (e) {
+        // Fallback for older raw-text logs
+        logs.push({ 
+          ip: key.name.replace('ban_', ''), 
+          attemptedUrl: logDataStr, 
+          timestamp: null 
+        });
       }
     }
 
-    return new Response(JSON.stringify({ logs }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
+    // 4. Return the formatted logs
+    return new Response(JSON.stringify({ logs }), { 
+      status: 200, 
+      headers: { 'Content-Type': 'application/json' } 
     });
 
   } catch (err) {
-    console.error('Log Fetch Error:', err);
-    return new Response('Internal Server Error', { status: 500 });
+    console.error('Fetch Logs Error:', err);
+    return new Response(`Server Error: ${err.message}`, { status: 500 });
   }
 }
