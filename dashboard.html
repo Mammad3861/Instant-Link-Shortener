@@ -517,28 +517,41 @@
       if (activeTab === 'adminsSection') loadAdmins();
     };
 
-    // Authorization Verification
+    // --- Dashboard Initialization & Security Check ---
+    // This function acts as the bouncer. It firmly checks the token before showing the dashboard.
     const initDashboard = async (token) => {
       try {
         dom.loginBtn.disabled = true;
         dom.loginBtn.textContent = dict[currentLang].msgChecking;
+        
+        // We test the token by trying to fetch a protected endpoint (logs)
         const res = await fetch('/api/logs', { headers: { 'Authorization': `Bearer ${token}` } });
         
         if (res.ok) {
+          // Welcome in! The token is valid. Let's set up the dashboard.
           superToken = token;
           localStorage.setItem('cf_master_token', token);
+          
+          // Hide the login screen and beautifully reveal the dashboard
           dom.loginPanel.classList.add('hidden');
           dom.dashboardPanel.classList.remove('hidden');
           
           loadLinks();
           loadSettings();
         } else {
+          // The token was rejected by the server. Time to throw an error.
           throw new Error(dict[currentLang].errAuth);
         }
       } catch (err) {
+        // If anything goes wrong or the token is bad, we strictly lock down the UI.
         showMsg(err.message, true);
         localStorage.removeItem('cf_master_token');
         superToken = '';
+        
+        // Strictly enforce hiding the dashboard and bringing back the login panel
+        dom.dashboardPanel.classList.add('hidden'); 
+        dom.loginPanel.classList.remove('hidden');
+        
         dom.loginBtn.textContent = dict[currentLang].loginBtn;
       } finally {
         dom.loginBtn.disabled = false;
