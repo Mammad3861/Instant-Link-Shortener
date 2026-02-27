@@ -40,6 +40,17 @@ This project is designed to be deployed directly and automatically via Cloudflar
    - Value: *Enter a strong, secret password or UUID*. (Click Encrypt to hide it).
 4. **Important:** Go back to the **Deployments** tab and click **Retry deployment** to apply these database variables.
 
+### Step 5: Enable Google Safe Browsing (Optional but Recommended)
+For enterprise-grade security, you can connect the system to Google's threat database to automatically block malware and phishing links.
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
+2. Create a new project and enable the **Safe Browsing API**.
+3. Generate an API Key.
+4. Go to your Cloudflare Pages project **Settings** -> **Environment variables**.
+5. Add a new variable:
+   - Variable name: `SAFE_BROWSING_KEY`
+   - Value: *Your Google API Key*
+*(If you skip this step, the system will seamlessly fall back to its internal ultra-fast Regex filter).*
+
 ## 🔒 Email Authentication via Cloudflare Zero Trust (Highly Recommended)
 
 To add enterprise-grade security to your admin panel without modifying the code:
