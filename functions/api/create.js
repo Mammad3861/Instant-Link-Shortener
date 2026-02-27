@@ -65,7 +65,8 @@ export async function onRequestPost({ request, env }) {
     try { new URL(url); } catch { return new Response('Invalid URL', { status: 400 }); }
     
     const lowerUrl = url.toLowerCase();
-    const isUnsafe = blocklist.some(keyword => lowerUrl.includes(keyword));
+    // Evaluate the URL against our safety patterns
+    const isUnsafe = unsafePatterns.test(url);
     
     if (isUnsafe) {
       if (!isAdmin && clientIp !== 'unknown') {
@@ -113,4 +114,5 @@ export async function onRequestPost({ request, env }) {
     return new Response('Server Error', { status: 500 });
   }
 }
+
 
