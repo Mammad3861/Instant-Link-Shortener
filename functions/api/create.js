@@ -1,77 +1,89 @@
 // Generate a 6-character random slug
 const generateSlug = () => Math.random().toString(36).substring(2, 8);
 
-// --- Advanced Content Safety Guardian ---
-// Regular Expression (Regex) to catch root words, common variations, and notorious platforms.
-// This serves as our frontline defense against adult content, gambling, and malware.
+// --- Level 1: Fast Regex Guardian ---
 const unsafePatterns = new RegExp([
-  // 1. Notorious adult platforms and generic NSFW root words
   'porn', 'xxx', 'xvideos', 'pornhub', 'xnxx', 'xhamster', 'redtube', 
   'youporn', 'brazzers', 'chaturbate', 'onlyfans', 'rule34', 'nude',
-  
-  // 2. Gambling, betting, and scams
   'casino', 'betting', '1xbet', 'gamble', 'free-robux', 'ponzi',
-  
-  // 3. Cyber threats and malicious intent
   'malware', 'phishing', 'hack', 'crack', 'nulled', 'grabber',
-  
-  // 4. Highly suspicious Top-Level Domains (often used for spam/phishing)
   '\\.tk/', '\\.ml/', '\\.ga/', '\\.cf/', '\\.gq/'
-].join('|'), 'i'); // The 'i' flag ensures the check is case-insensitive (e.g., blocks PORN, porn, PoRn)
+].join('|'), 'i');
 
 export async function onRequestPost({ request, env }) {
-  const clientIp = request.headers.get('cf-connecting-ip') || 'unknown';
-  const banKey = `ban_${clientIp}`;
-  const rateLimitKey = `rl_${clientIp}`;
-
-  const authHeader = request.headers.get('Authorization') || '';
-  const token = authHeader.replace('Bearer ', '').trim();
-  
-  let role = 'public';
-  if (token === env.MASTER_KEY) {
-    role = 'master';
-  } else if (token) {
-    const isSubAdmin = await env.ILS.get(`admin_${token}`);
-    if (isSubAdmin) role = 'subadmin';
-  }
-
-  const isAdmin = role === 'master' || role === 'subadmin';
-
-  // Check if public access is disabled
-  if (!isAdmin) {
-    const publicStatus = await env.ILS.get('config_public_status') || 'open';
-    if (publicStatus === 'closed') {
-      return new Response('Service is currently private', { status: 403 });
-    }
-  }
-
-  // Enforce IP bans and rate limits for public users
-  if (!isAdmin && clientIp !== 'unknown') {
-    if (await env.ILS.get(banKey)) return new Response('Access Denied', { status: 403 });
-    if (await env.ILS.get(rateLimitKey)) return new Response('Too Many Requests', { status: 429 });
-  }
-
   try {
-    // Get variables from request
+    if (!env.ILS) return new Response("Database binding missing", { status: 500 });
+    if (!env.MASTER_KEY) return new Response("Master key missing", { status: 500 });
+
+    const clientIp = request.headers.get('cf-connecting-ip') || 'unknown';
+    const banKey = `ban_${clientIp}`;
+    const rateLimitKey = `rl_${clientIp}`;
+
+    const authHeader = request.headers.get('Authorization') || '';
+    const token = authHeader.replace('Bearer ', '').trim();
+    
+    let role = 'public';
+    if (token === env.MASTER_KEY) {
+      role = 'master';
+    } else if (token) {
+      const isSubAdmin = await env.ILS.get(`admin_${token}`);
+      if (isSubAdmin) role = 'subadmin';
+    }
+
+    const isAdmin = role === 'master' || role === 'subadmin';
+
+    if (!isAdmin) {
+      const publicStatus = await env.ILS.get('config_public_status') || 'open';
+      if (publicStatus === 'closed') return new Response('Service is currently private', { status: 403 });
+    }
+
+    if (!isAdmin && clientIp !== 'unknown') {
+      if (await env.ILS.get(banKey)) return new Response('Access Denied', { status: 403 });
+      if (await env.ILS.get(rateLimitKey)) return new Response('Too Many Requests', { status: 429 });
+    }
+
     let { url, customSlug, ttl } = await request.json();
     if (!url) return new Response('Missing URL', { status: 400 });
 
-    // Auto-prepend https:// if the user forgot it
-    if (!/^https?:\/\//i.test(url)) {
-      url = 'https://' + url;
-    }
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
 
-    // Validate the corrected URL
     try { new URL(url); } catch { return new Response('Invalid URL', { status: 400 }); }
     
-    const lowerUrl = url.toLowerCase();
-    // Evaluate the URL against our safety patterns
-    const isUnsafe = unsafePatterns.test(url);
+    // --- Security Check 1: Fast Regex ---
+    let isUnsafe = unsafePatterns.test(url);
     
+    // --- Security Check 2: Google Safe Browsing API (If Configured) ---
+    // This makes the project enterprise-grade while remaining completely optional.
+    if (!isUnsafe && env.SAFE_BROWSING_KEY) {
+      try {
+        const gbUrl = `https://safebrowsing.googleapis.com/v4/threatMatches:find?key=${env.SAFE_BROWSING_KEY}`;
+        const payload = {
+          client: { clientId: "ils-cloudflare", clientVersion: "1.0" },
+          threatInfo: {
+            threatTypes: ["MALWARE", "SOCIAL_ENGINEERING", "UNWANTED_SOFTWARE"],
+            platformTypes: ["ANY_PLATFORM"],
+            threatEntryTypes: ["URL"],
+            threatEntries: [{ url: url }]
+          }
+        };
+        
+        const gbRes = await fetch(gbUrl, { method: 'POST', body: JSON.stringify(payload) });
+        const gbData = await gbRes.json();
+        
+        if (gbData.matches && gbData.matches.length > 0) {
+          isUnsafe = true;
+          console.warn(`Google Safe Browsing blocked: ${url}`);
+        }
+      } catch (apiErr) {
+        console.error('Google API Error (Skipping):', apiErr);
+      }
+    }
+    
+    // Handle Unsafe Content
     if (isUnsafe) {
       if (!isAdmin && clientIp !== 'unknown') {
         const logData = JSON.stringify({ attemptedUrl: url, timestamp: new Date().toISOString() });
-        await env.ILS.put(banKey, logData, { expirationTtl: 7200 }); // 2-hour ban
+        await env.ILS.put(banKey, logData, { expirationTtl: 7200 }); 
       }
       return new Response('Forbidden: Unsafe link', { status: 403 });
     }
@@ -81,19 +93,16 @@ export async function onRequestPost({ request, env }) {
 
     if (isAdmin) {
       finalSlug = customSlug ? customSlug.trim() : generateSlug();
-      // Convert hours to seconds (e.g., 2 hours = 7200 seconds)
       if (ttl && Number(ttl) > 0) {
         expirationTtl = Math.floor(Number(ttl) * 3600);
-        if (expirationTtl < 60) expirationTtl = 60; // Cloudflare minimum is 60s
+        if (expirationTtl < 60) expirationTtl = 60; 
       }
     } else {
       finalSlug = generateSlug();
-      expirationTtl = 600; // 10-minute default for public
+      expirationTtl = 600; 
     }
 
-    if (await env.ILS.get(finalSlug)) {
-      return new Response('Slug already in use', { status: 409 });
-    }
+    if (await env.ILS.get(finalSlug)) return new Response('Slug already in use', { status: 409 });
 
     const options = {};
     if (expirationTtl) options.expirationTtl = expirationTtl;
@@ -110,9 +119,7 @@ export async function onRequestPost({ request, env }) {
     }), { status: 201, headers: { 'Content-Type': 'application/json' } });
 
   } catch (err) {
-    console.error('Create Link Error:', err);
-    return new Response('Server Error', { status: 500 });
+    console.error('CRITICAL ERROR:', err);
+    return new Response(`Server Error: ${err.message}`, { status: 500 });
   }
 }
-
-
