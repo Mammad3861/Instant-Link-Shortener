@@ -1,8 +1,12 @@
 // Generate a 6-character random slug
 const generateSlug = () => Math.random().toString(36).substring(2, 8);
 
-// Keywords to flag malicious content
-const blocklist = ['porn', 'xxx', 'casino', 'betting', 'malware', 'phishing'];
+// --- Content Safety Guardian ---
+// A comprehensive list of keywords we want to actively block to keep our service clean, safe, and professional.
+const blocklist = [
+  'porn', 'xxx', 'xvideos', 'pornhub', 'xnxx', 'xhamster', 
+  'casino', 'betting', 'malware', 'phishing', 'onlyfans'
+];
 
 export async function onRequestPost({ request, env }) {
   const clientIp = request.headers.get('cf-connecting-ip') || 'unknown';
