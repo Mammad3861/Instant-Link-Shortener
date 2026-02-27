@@ -1,12 +1,23 @@
 // Generate a 6-character random slug
 const generateSlug = () => Math.random().toString(36).substring(2, 8);
 
-// --- Content Safety Guardian ---
-// A comprehensive list of keywords we want to actively block to keep our service clean, safe, and professional.
-const blocklist = [
-  'porn', 'xxx', 'xvideos', 'pornhub', 'xnxx', 'xhamster', 
-  'casino', 'betting', 'malware', 'phishing', 'onlyfans'
-];
+// --- Advanced Content Safety Guardian ---
+// Regular Expression (Regex) to catch root words, common variations, and notorious platforms.
+// This serves as our frontline defense against adult content, gambling, and malware.
+const unsafePatterns = new RegExp([
+  // 1. Notorious adult platforms and generic NSFW root words
+  'porn', 'xxx', 'xvideos', 'pornhub', 'xnxx', 'xhamster', 'redtube', 
+  'youporn', 'brazzers', 'chaturbate', 'onlyfans', 'rule34', 'nude',
+  
+  // 2. Gambling, betting, and scams
+  'casino', 'betting', '1xbet', 'gamble', 'free-robux', 'ponzi',
+  
+  // 3. Cyber threats and malicious intent
+  'malware', 'phishing', 'hack', 'crack', 'nulled', 'grabber',
+  
+  // 4. Highly suspicious Top-Level Domains (often used for spam/phishing)
+  '\\.tk/', '\\.ml/', '\\.ga/', '\\.cf/', '\\.gq/'
+].join('|'), 'i'); // The 'i' flag ensures the check is case-insensitive (e.g., blocks PORN, porn, PoRn)
 
 export async function onRequestPost({ request, env }) {
   const clientIp = request.headers.get('cf-connecting-ip') || 'unknown';
@@ -102,3 +113,4 @@ export async function onRequestPost({ request, env }) {
     return new Response('Server Error', { status: 500 });
   }
 }
+
